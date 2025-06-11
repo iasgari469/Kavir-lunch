@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سیستم سفارش ناهار شرکت کویر</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Vazirmatn', sans-serif; }
+        .disabled-card { opacity: 0.6; pointer-events: none; }
+        .toast {
+            visibility: hidden;
+            min-width: 250px;
+            margin-left: -125px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 16px;
+            position: fixed;
+            z-index: 100;
+            left: 50%;
+            bottom: 30px;
+            transition: visibility 0s, opacity 0.5s linear;
+            opacity: 0;
+        }
+        .toast.show {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Container اصلی -->
+    <div id="app-container" class="max-w-4xl mx-auto p-4 md:p-8">
+
+        <!-- بخش ورود -->
+        <div id="login-view" class="bg-white p-8 rounded-xl shadow-md text-center">
+            <h1 class="text-2xl font-bold mb-2 text-blue-600">سیستم سفارش ناهار شرکت کویر</h1>
+            <p class="text-gray-600 mb-6">لطفاً کد پرسنلی خود را برای ورود وارد کنید.</p>
+            <div class="max-w-sm mx-auto">
+                <input type="text" id="personnel-code-input" class="w-full px-4 py-2 border border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="کد پرسنلی">
+                <button id="login-btn" class="w-full mt-4 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300">ورود</button>
+                <p id="login-error" class="text-red-500 mt-4 h-4"></p>
+            </div>
+        </div>
+
+        <!-- بخش کارمندان -->
+        <div id="employee-view" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-bold text-gray-700">سلام، <span id="employee-name"></span>!</h1>
+                <button id="logout-btn-employee" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300">خروج</button>
+            </div>
+            <p class="mb-6 text-gray-600">منوی غذای این هفته در زیر آمده است. لطفاً غذای خود را برای روزهای آینده انتخاب کنید. توجه داشته باشید که امکان انتخاب غذا برای هر روز تا ساعت ۹ صبح همان روز امکان‌پذیر است.</p>
+            <div id="menu-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- کارت‌های منو به صورت داینامیک اینجا اضافه می‌شوند -->
+            </div>
+        </div>
+
+        <!-- پنل ادمین -->
+        <div id="admin-view" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-xl md:text-2xl font-bold text-blue-700">پنل مدیریت</h1>
+                <button id="logout-btn-admin" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300">خروج</button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- بخش مدیریت منوی هفته -->
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h2 class="text-xl font-bold mb-4 border-b pb-2">مدیریت منو</h2>
+                    <p id="menu-week-label" class="text-sm text-gray-500 mb-4"></p>
+                    <div id="menu-management" class="space-y-4">
+                        <!-- فیلدهای منو به صورت داینامیک اینجا اضافه می‌شوند -->
+                    </div>
+                    <button id="save-menu-btn" class="w-full mt-6 bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition">ذخیره منو</button>
+                </div>
+
+                <!-- بخش مدیریت پرسنل و خروجی -->
+                <div class="space-y-8">
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <h2 class="text-xl font-bold mb-4 border-b pb-2">مدیریت پرسنل</h2>
+                        <div class="space-y-3">
+                            <input type="text" id="new-employee-name" class="w-full px-3 py-2 border rounded-lg" placeholder="نام و نام خانوادگی">
+                            <input type="text" id="new-employee-code" class="w-full px-3 py-2 border rounded-lg" placeholder="کد پرسنلی">
+                            <select id="new-employee-unit" class="w-full px-3 py-2 border rounded-lg bg-white">
+                                <option value="">واحد سازمانی را انتخاب کنید</option>
+                                <option value="واحد مدیریت">واحد مدیریت</option>
+                                <option value="واحد بازرگانی">واحد بازرگانی</option>
+                                <option value="واحد PMO">واحد PMO</option>
+                                <option value="واحد مالی">واحد مالی</option>
+                                <option value="معماری">معماری</option>
+                                <option value="طرح و نگرش کویر">طرح و نگرش کویر</option>
+                            </select>
+                        </div>
+                        <button id="add-employee-btn" class="w-full mt-4 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition">افزودن پرسنل</button>
+                        <h3 class="text-lg font-semibold mt-6 mb-2">لیست پرسنل</h3>
+                        <ul id="employee-list" class="max-h-48 overflow-y-auto bg-gray-50 p-2 rounded-lg">
+                           <!-- لیست پرسنل -->
+                        </ul>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <h2 class="text-xl font-bold mb-4 border-b pb-2">گزارش سفارش‌ها</h2>
+                        <p class="text-gray-600 mb-4">برای دریافت فایل اکسل (CSV) سفارش‌های امروز، روی دکمه زیر کلیک کنید. (فقط سفارش‌های ثبت شده در همین مرورگر)</p>
+                        <button id="export-orders-btn" class="w-full bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 transition">دریافت گزارش امروز</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // No more type="module" needed as there are no imports.
+        // This is now a fully self-contained application.
+        
+        // --- Data Management (using localStorage) ---
+        const db = {
+            // Helper function to get data from localStorage
+            get: (key) => {
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : null;
+            },
+            // Helper function to set data in localStorage
+            set: (key, value) => {
+                localStorage.setItem(key, JSON.stringify(value));
+            }
+        };
+
+        // --- App State ---
+        let currentUser = null;
+        const weekDays = [
+            { key: "saturday", name: "شنبه" },
+            { key: "sunday", name: "یکشنبه" },
+            { key: "monday", name: "دوشنبه" },
+            { key: "tuesday", name: "سه‌شنبه" },
+            { key: "wednesday", name: "چهارشنبه" },
+        ];
+
+        // --- UI Elements ---
+        const loginView = document.getElementById('login-view');
+        const employeeView = document.getElementById('employee-view');
+        const adminView = document.getElementById('admin-view');
+        const loginBtn = document.getElementById('login-btn');
+        const personnelCodeInput = document.getElementById('personnel-code-input');
+        const loginError = document.getElementById('login-error');
+        const toast = document.getElementById('toast');
+
+        // --- Helper Functions ---
+        function showToast(message, duration = 3000) {
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, duration);
+        }
+
+        function getFormattedDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        function getStartOfWeek(date = new Date()) {
+            const d = new Date(date);
+            const day = d.getDay(); // 0 (Sun) - 6 (Sat)
+            const diff = (day + 1) % 7; // How many days to subtract to get to last Saturday
+            d.setDate(d.getDate() - diff);
+            return d;
+        }
+
+        function getAdminMenuTargetStartOfWeek() {
+            const today = new Date();
+            const dayOfWeek = today.getDay(); // 0=Sun, 3=Wed
+            const startOfThisWeek = getStartOfWeek(today);
+
+            if (dayOfWeek >= 3 && dayOfWeek <= 5) { // Wed, Thu, Fri
+                const startOfNextWeek = new Date(startOfThisWeek);
+                startOfNextWeek.setDate(startOfThisWeek.getDate() + 7);
+                return startOfNextWeek;
+            }
+            return startOfThisWeek;
+        }
+
+        // --- Authentication ---
+        function handleLogin() {
+            const code = personnelCodeInput.value.trim();
+            if (!code) {
+                loginError.textContent = "کد پرسنلی نمی‌تواند خالی باشد.";
+                return;
+            }
+            loginError.textContent = "";
+
+            if (code === 'admin') {
+                currentUser = { code: 'admin', name: 'ادمین سیستم', isAdmin: true };
+                renderAdminView();
+                return;
+            }
+
+            const employees = db.get('employees') || {};
+            if (employees[code]) {
+                currentUser = { code, ...employees[code], isAdmin: false };
+                renderEmployeeView();
+            } else {
+                loginError.textContent = "کد پرسنلی یافت نشد.";
+            }
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            loginView.style.display = 'block';
+            employeeView.style.display = 'none';
+            adminView.style.display = 'none';
+            personnelCodeInput.value = '';
+        }
+
+        // --- Rendering ---
+        function renderAdminView() {
+            loginView.style.display = 'none';
+            adminView.style.display = 'block';
+            loadAdminData();
+        }
+
+        function renderEmployeeView() {
+            loginView.style.display = 'none';
+            employeeView.style.display = 'block';
+            document.getElementById('employee-name').textContent = currentUser.name;
+            loadEmployeeMenu();
+        }
+        
+        // --- Admin Panel Logic ---
+        function loadAdminData() {
+            // Load and display employee list
+            const employeeList = document.getElementById('employee-list');
+            const employees = db.get('employees') || {};
+            employeeList.innerHTML = '';
+            
+            const employeeCodes = Object.keys(employees);
+            if (employeeCodes.length === 0) {
+                 employeeList.innerHTML = '<li class="text-gray-500">هیچ پرسنلی ثبت نشده است.</li>';
+            } else {
+                employeeCodes.sort((a,b) => employees[a].name.localeCompare(employees[b].name)).forEach(code => {
+                    const employee = employees[code];
+                    const li = document.createElement('li');
+                    li.className = 'flex justify-between items-center p-2 hover:bg-gray-100 rounded';
+                    li.innerHTML = `<span>${employee.name} (${code}) - ${employee.unit}</span><button data-id="${code}" class="delete-employee-btn text-red-500 hover:text-red-700">حذف</button>`;
+                    employeeList.appendChild(li);
+                });
+            }
+
+            // Populate menu management fields
+            const menuManagementDiv = document.getElementById('menu-management');
+            menuManagementDiv.innerHTML = '';
+            const targetWeekStart = getAdminMenuTargetStartOfWeek();
+            
+            document.getElementById('menu-week-label').textContent = `درحال تنظیم منو برای هفته شروع از: ${targetWeekStart.toLocaleDateString('fa-IR')}`;
+
+            const menus = db.get('menus') || {};
+            const menuDocId = getFormattedDate(targetWeekStart);
+            const menuData = menus[menuDocId] || {};
+
+            weekDays.forEach((day, index) => {
+                const dayDate = new Date(targetWeekStart);
+                dayDate.setDate(targetWeekStart.getDate() + index);
+                
+                const menuForDay = menuData[day.key] || ["", ""];
+                
+                menuManagementDiv.innerHTML += `
+                    <div>
+                        <label class="font-semibold">${day.name} <span class="text-xs text-gray-500">${dayDate.toLocaleDateString('fa-IR')}</span></label>
+                        <div class="flex gap-2 mt-1">
+                            <input type="text" id="menu-${day.key}-1" class="w-1/2 px-3 py-2 border rounded-lg" placeholder="غذای اول" value="${menuForDay[0]}">
+                            <input type="text" id="menu-${day.key}-2" class="w-1/2 px-3 py-2 border rounded-lg" placeholder="غذای دوم" value="${menuForDay[1]}">
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        function saveMenu() {
+            const menuDataForWeek = {};
+            let allValid = true;
+            weekDays.forEach(day => {
+                const food1 = document.getElementById(`menu-${day.key}-1`).value.trim();
+                const food2 = document.getElementById(`menu-${day.key}-2`).value.trim();
+                if (food1 && food2) {
+                    menuDataForWeek[day.key] = [food1, food2];
+                } else if(food1 || food2) {
+                    allValid = false;
+                }
+            });
+
+            if (!allValid) {
+                showToast("برای هر روز باید هر دو نوع غذا را مشخص کنید.", 4000);
+                return;
+            }
+            
+            const targetWeekStart = getAdminMenuTargetStartOfWeek();
+            const menuDocId = getFormattedDate(targetWeekStart);
+            const allMenus = db.get('menus') || {};
+            allMenus[menuDocId] = menuDataForWeek;
+            
+            db.set('menus', allMenus);
+            showToast("منوی هفته با موفقیت ذخیره شد.");
+        }
+
+        function addEmployee() {
+            const name = document.getElementById('new-employee-name').value.trim();
+            const code = document.getElementById('new-employee-code').value.trim();
+            const unit = document.getElementById('new-employee-unit').value;
+
+            if (!name || !code || !unit) {
+                showToast("لطفاً تمام فیلدها را برای افزودن پرسنل کامل کنید.");
+                return;
+            }
+
+            const allEmployees = db.get('employees') || {};
+            if(allEmployees[code]){
+                showToast("کد پرسنلی تکراری است.");
+                return;
+            }
+
+            allEmployees[code] = { name, unit };
+            db.set('employees', allEmployees);
+            
+            showToast("پرسنل جدید با موفقیت اضافه شد.");
+            document.getElementById('new-employee-name').value = '';
+            document.getElementById('new-employee-code').value = '';
+            document.getElementById('new-employee-unit').value = '';
+            loadAdminData(); // Refresh the list
+        }
+
+        function deleteEmployee(code) {
+             if(confirm(`آیا از حذف پرسنل با کد ${code} اطمینان دارید؟`)){
+                const allEmployees = db.get('employees') || {};
+                delete allEmployees[code];
+                db.set('employees', allEmployees);
+                showToast("پرسنل با موفقیت حذف شد.");
+                loadAdminData(); // Refresh the list
+             }
+        }
+        
+        function exportOrders() {
+            const todayStr = getFormattedDate(new Date());
+            const allOrders = db.get('orders') || {};
+            const todayOrders = allOrders[todayStr] || {};
+            const employees = db.get('employees') || {};
+            
+            if (Object.keys(todayOrders).length === 0) {
+                showToast("هنوز هیچ سفارشی برای امروز (در این مرورگر) ثبت نشده است.");
+                return;
+            }
+            
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+            csvContent += "کد پرسنلی,نام,واحد سازمانی,انتخاب غذا\r\n";
+
+            for (const code in todayOrders) {
+                const choice = todayOrders[code];
+                if (choice !== 'نمی‌خواهم') {
+                    const employee = employees[code] || { name: 'نامشخص', unit: 'نامشخص' };
+                    const row = `${code},"${employee.name}","${employee.unit}","${choice}"`;
+                    csvContent += row + "\r\n";
+                }
+            }
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `orders-${todayStr}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("فایل گزارش با موفقیت دانلود شد.");
+        }
+
+        // --- Employee View Logic ---
+        function loadEmployeeMenu() {
+            const menuContainer = document.getElementById('menu-container');
+            menuContainer.innerHTML = '<p>در حال بارگذاری منو...</p>';
+            
+            const currentWeekStart = getStartOfWeek();
+            const menuDocId = getFormattedDate(currentWeekStart);
+            const allMenus = db.get('menus') || {};
+            const weeklyMenu = allMenus[menuDocId] || {};
+
+            const allOrders = db.get('orders') || {};
+
+            menuContainer.innerHTML = ''; 
+
+            for (let i = 0; i < weekDays.length; i++) {
+                const dayInfo = weekDays[i];
+                const dayDate = new Date(currentWeekStart);
+                dayDate.setDate(currentWeekStart.getDate() + i);
+                
+                const dateStr = getFormattedDate(dayDate);
+                const menuForDay = weeklyMenu[dayInfo.key] || ["-", "-"];
+                
+                const now = new Date();
+                const deadline = new Date(dayDate);
+                deadline.setHours(9, 0, 0, 0);
+                const isPastDeadline = now > deadline;
+
+                const card = document.createElement('div');
+                card.className = `bg-white p-6 rounded-xl shadow-md space-y-3 transition duration-300 ${isPastDeadline ? 'disabled-card' : ''}`;
+                card.innerHTML = `
+                    <div class="flex justify-between items-center"><h3 class="text-lg font-bold text-blue-600">${dayInfo.name}</h3><span class="text-sm text-gray-500">${dayDate.toLocaleDateString('fa-IR')}</span></div>
+                    <div class="space-y-2 pt-2 text-right">
+                       ${menuForDay[0] === "-" ? '<p class="text-gray-500">منو برای این روز تنظیم نشده است.</p>' : `
+                        <div><input type="radio" name="food-${dateStr}" value="${menuForDay[0]}" id="food1-${dateStr}" class="ml-2"><label for="food1-${dateStr}">${menuForDay[0]}</label></div>
+                        <div><input type="radio" name="food-${dateStr}" value="${menuForDay[1]}" id="food2-${dateStr}" class="ml-2"><label for="food2-${dateStr}">${menuForDay[1]}</label></div>
+                        <hr class="my-2">
+                        <div><input type="radio" name="food-${dateStr}" value="نمی‌خواهم" id="none-${dateStr}" class="ml-2"><label for="none-${dateStr}">غذا نمی‌خواهم</label></div>`}
+                    </div>`;
+                
+                // Check for existing selection
+                const dayOrders = allOrders[dateStr] || {};
+                const userChoice = dayOrders[currentUser.code];
+                if (userChoice) {
+                    const radio = card.querySelector(`input[name="food-${dateStr}"][value="${userChoice}"]`);
+                    if (radio) radio.checked = true;
+                }
+
+                menuContainer.appendChild(card);
+            }
+        }
+        
+        function saveFoodChoice(dateStr, choice) {
+            const allOrders = db.get('orders') || {};
+            if (!allOrders[dateStr]) {
+                allOrders[dateStr] = {};
+            }
+            allOrders[dateStr][currentUser.code] = choice;
+            db.set('orders', allOrders);
+            showToast("انتخاب شما ثبت شد!");
+        }
+
+        // --- Event Listeners ---
+        window.addEventListener('DOMContentLoaded', () => {
+            loginBtn.addEventListener('click', handleLogin);
+            personnelCodeInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') handleLogin(); });
+
+            document.getElementById('logout-btn-employee').addEventListener('click', handleLogout);
+            document.getElementById('logout-btn-admin').addEventListener('click', handleLogout);
+            
+            document.getElementById('save-menu-btn').addEventListener('click', saveMenu);
+            document.getElementById('add-employee-btn').addEventListener('click', addEmployee);
+            document.getElementById('export-orders-btn').addEventListener('click', exportOrders);
+            document.getElementById('employee-list').addEventListener('click', (e) => {
+                if (e.target.classList.contains('delete-employee-btn')) {
+                    deleteEmployee(e.target.getAttribute('data-id'));
+                }
+            });
+
+            document.getElementById('menu-container').addEventListener('change', (e) => {
+                if (e.target.type === 'radio') {
+                    saveFoodChoice(e.target.name.replace('food-', ''), e.target.value);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
